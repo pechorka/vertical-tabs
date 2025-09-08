@@ -13,6 +13,7 @@ Open the Side Panel
 
 - Click the extension’s toolbar icon to open the side panel, or
 - Open the side panel UI from the Chrome side panel menu and pick "Vertical Tabs (Simple)".
+- Press Alt+/ or Ctrl+/ to focus the side panel from any tab.
 
 Permissions
 

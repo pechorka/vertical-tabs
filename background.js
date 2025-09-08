@@ -18,3 +18,17 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
+// Keyboard shortcuts to focus the side panel
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'focus-tab-panel-alt' || command === 'focus-tab-panel-ctrl') {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.id !== undefined) {
+        await chrome.sidePanel.open({ tabId: tab.id });
+      }
+    } catch (e) {
+      console.warn('Failed to open side panel:', e);
+    }
+  }
+});
+

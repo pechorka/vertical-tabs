@@ -13,6 +13,20 @@
   },
   "side_panel": {
     "default_path": "sidepanel.html"
+  },
+  "commands": {
+    "focus-tab-panel-alt": {
+      "suggested_key": {
+        "default": "Alt+/"
+      },
+      "description": "Focus the tab panel"
+    },
+    "focus-tab-panel-ctrl": {
+      "suggested_key": {
+        "default": "Ctrl+/"
+      },
+      "description": "Focus the tab panel"
+    }
   }
 }
 
