@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Vertical Tabs (Simple)",
+  "version": "0.1.0",
+  "description": "A simple side panel showing tabs in a vertical list.",
+  "permissions": ["tabs", "sidePanel", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Vertical Tabs"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}
+

@@ -1,0 +1,109 @@
+:root {
+  --bg: #0f1115;
+  --panel: #151821;
+  --text: #e7e9ee;
+  --muted: #a7adbb;
+  --accent: #4c8bf5;
+  --hover: #1c2230;
+  --danger: #e34f4f;
+  --border: #242a3a;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.filter {
+  flex: 1 1 auto;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #0c0e13;
+  color: var(--text);
+  outline: none;
+}
+
+.actions button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+}
+
+.item:hover { background: var(--hover); }
+.item.active { border-color: var(--accent); background: #121724; }
+.item.pinned .title { font-weight: 600; }
+
+.favicon {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  background: #2a2f40;
+}
+
+.title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.controls { display: flex; gap: 6px; align-items: center; }
+.btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); color: var(--text); }
+.btn.danger:hover { border-color: var(--danger); color: #fff; background: #341b1b; }
+
+.drag-placeholder {
+  height: 8px;
+  margin: 2px 0;
+  border-radius: 4px;
+  background: var(--border);
+}
+
