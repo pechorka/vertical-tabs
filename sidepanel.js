@@ -2,6 +2,7 @@ const listEl = document.getElementById('list');
 const filterEl = document.getElementById('filter');
 const newTabEl = document.getElementById('newtab');
 const resultsEl = document.getElementById('results');
+const sessionsEl = document.getElementById('sessions');
 
 let allTabs = [];
 let currentWindowId = null;
@@ -10,6 +11,10 @@ let collapsedGroups = {}; // { [groupKey]: boolean }
 const editState = {};
 let pendingEditFocusId = null;
 let historyResults = [];
+// Sessions state (per window)
+let sessions = []; // [{ id, title }]
+let activeSessionId = null;
+let tabSession = {}; // { [tabId]: sessionId }
 let openMenuTabId = null;
 
 async function loadTabs() {
@@ -17,6 +22,9 @@ async function loadTabs() {
   currentWindowId = win.id;
   allTabs = await chrome.tabs.query({ windowId: currentWindowId });
   await loadCollapsedState();
+  await loadSessionsState();
+  ensureDefaultSession();
+  await ensureTabMappings();
 }
 
 function faviconUrl(tab) {
@@ -77,6 +85,56 @@ async function saveCollapsedState() {
   } catch {}
 }
 
+async function loadSessionsState() {
+  try {
+    const key = `vt_sessions_${currentWindowId}`;
+    const data = await chrome.storage.local.get(key);
+    const st = data[key] || {};
+    sessions = Array.isArray(st.sessions) ? st.sessions : [];
+    activeSessionId = st.activeSessionId || null;
+    tabSession = st.tabSession || {};
+  } catch {
+    sessions = [];
+    activeSessionId = null;
+    tabSession = {};
+  }
+}
+
+async function saveSessionsState() {
+  try {
+    const key = `vt_sessions_${currentWindowId}`;
+    await chrome.storage.local.set({
+      [key]: { sessions, activeSessionId, tabSession },
+    });
+  } catch {}
+}
+
+function ensureDefaultSession() {
+  if (!sessions || sessions.length === 0) {
+    const def = { id: `s_${Date.now()}`, title: 'default' };
+    sessions = [def];
+    activeSessionId = def.id;
+  } else if (!activeSessionId) {
+    activeSessionId = sessions[0].id;
+  }
+}
+
+async function ensureTabMappings() {
+  const ids = new Set(allTabs.map(t => t.id));
+  // Remove mappings for tabs no longer present
+  for (const tid of Object.keys(tabSession)) {
+    const num = Number(tid);
+    if (!ids.has(num)) delete tabSession[tid];
+  }
+  // Assign missing tabs to active session
+  for (const t of allTabs) {
+    if (!tabSession[t.id]) {
+      tabSession[t.id] = activeSessionId;
+    }
+  }
+  await saveSessionsState();
+}
+
 function render() {
   const q = filterEl.value.trim();
   const frag = document.createDocumentFragment();
@@ -86,6 +144,7 @@ function render() {
   const groups = new Map(); // key -> { title, tabs: [], firstIndex }
 
   for (const tab of byIndex) {
+    if (activeSessionId && tabSession[tab.id] !== activeSessionId) continue;
     if (!matchesFilter(tab, q)) continue;
     const key = groupKeyForTab(tab);
     const title = groupTitle(key);
@@ -316,8 +375,100 @@ function render() {
   }
 }
 
+function renderSessions() {
+  const frag = document.createDocumentFragment();
+
+  for (const s of sessions) {
+    const row = document.createElement('div');
+    row.className = 'session-row';
+
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'active-session';
+    radio.checked = s.id === activeSessionId;
+    radio.title = 'Active';
+    radio.addEventListener('change', async () => {
+      activeSessionId = s.id;
+      await saveSessionsState();
+      await ensureTabMappings();
+      render();
+    });
+    row.appendChild(radio);
+
+    const name = document.createElement('input');
+    name.className = 'session-name';
+    name.type = 'text';
+    name.value = s.title || '';
+    name.placeholder = 'Session name';
+    name.addEventListener('input', async () => {
+      s.title = name.value;
+      await saveSessionsState();
+    });
+    row.appendChild(name);
+
+    const actions = document.createElement('div');
+    actions.className = 'session-actions';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn small danger';
+    closeBtn.textContent = 'Close';
+    closeBtn.title = 'Close session (closes all tabs)';
+    closeBtn.addEventListener('click', async () => {
+      const confirmClose = window.confirm('Close this session and all its tabs?');
+      if (!confirmClose) return;
+      try {
+        const idsToClose = allTabs.filter(t => tabSession[t.id] === s.id).map(t => t.id);
+        if (idsToClose.length > 0) {
+          await chrome.tabs.remove(idsToClose);
+        }
+      } catch {}
+      // Remove session
+      sessions = sessions.filter(x => x.id !== s.id);
+      if (activeSessionId === s.id) {
+        activeSessionId = sessions[0] ? sessions[0].id : null;
+      }
+      // Cleanup mappings for that session
+      for (const tid of Object.keys(tabSession)) {
+        if (tabSession[tid] === s.id) delete tabSession[tid];
+      }
+      if (!sessions || sessions.length === 0) {
+        const def = { id: `s_${Date.now()}`, title: 'default' };
+        sessions = [def];
+        activeSessionId = def.id;
+      }
+      await saveSessionsState();
+      await refresh();
+    });
+    actions.appendChild(closeBtn);
+
+    row.appendChild(actions);
+    frag.appendChild(row);
+  }
+
+  const createWrap = document.createElement('div');
+  createWrap.className = 'create-session';
+  const createBtn = document.createElement('button');
+  createBtn.className = 'btn';
+  createBtn.textContent = 'Create session';
+  createBtn.addEventListener('click', async () => {
+    const id = `s_${Date.now()}`;
+    const idx = sessions.length + 1;
+    sessions.push({ id, title: `Session ${idx}` });
+    activeSessionId = id;
+    await saveSessionsState();
+    await ensureTabMappings();
+    renderSessions();
+    render();
+  });
+  createWrap.appendChild(createBtn);
+  frag.appendChild(createWrap);
+
+  sessionsEl.replaceChildren(frag);
+}
+
 async function refresh() {
   await loadTabs();
+  renderSessions();
   render();
 }
 
