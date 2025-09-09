@@ -695,9 +695,18 @@ document.addEventListener('keydown', (e) => {
       return;
     }
   }
-  if (e.key === 'Escape' && openMenuTabId != null) {
-    openMenuTabId = null;
-    render();
+  if (e.key === 'Escape') {
+    if (openMenuTabId != null) {
+      openMenuTabId = null;
+      render();
+      return;
+    }
+    // Ask parent page (overlay host) to close the popup
+    try {
+      window.parent.postMessage({ vtMessage: 'close-popup' }, '*');
+      e.preventDefault();
+      e.stopPropagation();
+    } catch {}
   }
 });
 

@@ -102,4 +102,12 @@
       removeOverlay();
     }
   });
+
+  // Listen for messages from the iframe to close overlay (e.g., on Escape inside UI)
+  window.addEventListener('message', (e) => {
+    const data = e?.data;
+    if (data && data.vtMessage === 'close-popup') {
+      removeOverlay();
+    }
+  });
 })();
