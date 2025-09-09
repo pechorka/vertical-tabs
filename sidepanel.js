@@ -374,6 +374,18 @@ function render() {
         } catch {}
         await refresh();
       });
+      // Activate on Enter/Space while focused
+      item.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (editState[tab.id] !== undefined) return;
+          try {
+            await chrome.tabs.update(tab.id, { active: true });
+            await chrome.windows.update(tab.windowId, { focused: true });
+          } catch {}
+          await refresh();
+        }
+      });
       // Activate on Enter/Space
       item.addEventListener('keydown', async (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -530,6 +542,7 @@ function renderHistoryResults() {
     const el = document.createElement('div');
     el.className = 'result-item';
     el.tabIndex = 0;
+    el.tabIndex = 0;
 
     const title = document.createElement('div');
     title.className = 'res-title';
@@ -544,6 +557,13 @@ function renderHistoryResults() {
     el.addEventListener('click', async () => {
       if (!item.url) return;
       await openInNewTab(item.url);
+    });
+    el.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!item.url) return;
+        await openInNewTab(item.url);
+      }
     });
     el.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -665,6 +685,65 @@ try {
 // If the iframe gains focus later (e.g., after programmatic focus), ensure the input is focused
 window.addEventListener('focus', () => {
   try { newTabEl.focus(); } catch {}
+});
+
+// Keyboard navigation: Tab/Shift+Tab and Arrow Up/Down across key elements
+function getNavElements() {
+  const order = [];
+  if (newTabEl && newTabEl.isConnected) order.push(newTabEl);
+  resultsEl.querySelectorAll('.result-item').forEach(el => { if (el.isConnected) order.push(el); });
+  listEl.querySelectorAll('.group-body:not(.collapsed) .item').forEach(el => { if (el.isConnected) order.push(el); });
+  if (filterEl && filterEl.isConnected) order.push(filterEl);
+  return order;
+}
+
+function isNavElement(el) {
+  if (!el) return false;
+  if (el === newTabEl || el === filterEl) return true;
+  return el.classList?.contains('result-item') || el.classList?.contains('item');
+}
+
+function focusAndReveal(el) {
+  if (!el) return;
+  try { el.focus(); } catch {}
+  try { el.scrollIntoView({ block: 'nearest' }); } catch {}
+}
+
+function moveFocus(delta) {
+  const nav = getNavElements();
+  const active = document.activeElement;
+  const idx = nav.indexOf(active);
+  if (idx === -1 || nav.length === 0) return false;
+  const next = (idx + delta + nav.length) % nav.length;
+  focusAndReveal(nav[next]);
+  return true;
+}
+
+// Global handler for Tab/Shift+Tab and Arrow navigation
+document.addEventListener('keydown', (e) => {
+  // Only act when focus is on our intended elements
+  const active = document.activeElement;
+  const onEditInput = active?.classList?.contains('edit-input');
+  if (onEditInput) return; // don't interfere with URL edit textarea
+
+  // Tab trapping between our nav elements
+  if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
+    if (isNavElement(active)) {
+      e.preventDefault();
+      e.stopPropagation();
+      moveFocus(e.shiftKey ? -1 : 1);
+    }
+    return;
+  }
+
+  // Arrow navigation across results and tabs (and from inputs)
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (active === newTabEl || isNavElement(active)) {
+      e.preventDefault();
+      e.stopPropagation();
+      moveFocus(e.key === 'ArrowDown' ? 1 : -1);
+    }
+  }
 });
 
 async function submitEdit(tab) {
