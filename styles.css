@@ -51,16 +51,32 @@ html, body {
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto auto;
-  gap: 2px;
-  padding: 8px;
+  gap: 4px;
+  padding: 12px;
   border-radius: 8px;
   background: rgba(21,24,33,0.4);
   border: 1px solid transparent;
   cursor: pointer;
 }
 .result-item:hover { background: var(--hover); }
-.res-title { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-.res-url { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.res-title {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 14px;
+}
+.res-url {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+  /* show full URL by wrapping */
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
 
 .list {
   display: flex;
