@@ -3,15 +3,34 @@
   "name": "Vertical Tabs",
   "version": "0.1.0",
   "description": "A simple side panel showing tabs in a vertical list.",
-  "permissions": ["tabs", "sidePanel", "storage", "history"],
+  "permissions": ["tabs", "storage", "history", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Open Vertical Tabs"
+    "default_title": "Toggle Vertical Tabs"
   },
-  "side_panel": {
-    "default_path": "sidepanel.html"
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["sidepanel.html", "styles.css", "sidepanel.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "commands": {
+    "toggle-ui": {
+      "suggested_key": {
+        "default": "Alt+T",
+        "mac": "Alt+T"
+      },
+      "description": "Toggle Vertical Tabs overlay"
+    }
   }
 }

@@ -1,20 +1,36 @@
-// Ensure the side panel is enabled and points to our UI
-chrome.runtime.onInstalled.addListener(() => {
+async function toggleOverlayOnTab(tabId) {
+  if (tabId == null) return;
   try {
-    chrome.sidePanel.setOptions({ path: 'sidepanel.html', enabled: true });
+    await chrome.tabs.sendMessage(tabId, { type: 'toggle-ui' });
   } catch (e) {
-    // Older Chrome versions may not support sidePanel API
-    console.warn('sidePanel API not available:', e);
+    // If content script isn't injected yet, inject and try again
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content.js'],
+      });
+      await chrome.tabs.sendMessage(tabId, { type: 'toggle-ui' });
+    } catch (err) {
+      console.warn('Failed to toggle overlay:', err);
+    }
   }
-});
+}
 
-// Clicking the toolbar icon opens the side panel for current tab
+// Toolbar icon toggles the in-page overlay
 chrome.action.onClicked.addListener(async (tab) => {
-  try {
-    if (!tab || tab.id === undefined) return;
-    await chrome.sidePanel.open({ tabId: tab.id });
-  } catch (e) {
-    console.warn('Failed to open side panel:', e);
-  }
+  if (!tab || tab.id === undefined) return;
+  await toggleOverlayOnTab(tab.id);
 });
 
+// Keyboard command Alt+T toggles overlay on active tab
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'toggle-ui') return;
+  try {
+    const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (active && active.id !== undefined) {
+      await toggleOverlayOnTab(active.id);
+    }
+  } catch (e) {
+    console.warn('toggle-ui command failed:', e);
+  }
+});
