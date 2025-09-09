@@ -3,7 +3,7 @@
   "name": "Vertical Tabs",
   "version": "0.1.0",
   "description": "A simple side panel showing tabs in a vertical list.",
-  "permissions": ["tabs", "sidePanel", "storage"],
+  "permissions": ["tabs", "sidePanel", "storage", "history"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
@@ -15,4 +15,3 @@
     "default_path": "sidepanel.html"
   }
 }
-

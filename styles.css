@@ -20,7 +20,8 @@ html, body {
 
 .header {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   padding: 8px;
   background: var(--panel);
@@ -37,19 +38,29 @@ html, body {
   outline: none;
 }
 
-.actions button {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
+/* results list for history search */
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
 }
 
-.actions button:hover {
-  border-color: var(--accent);
-  color: var(--text);
+.result-item {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(21,24,33,0.4);
+  border: 1px solid transparent;
+  cursor: pointer;
 }
+.result-item:hover { background: var(--hover); }
+.res-title { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.res-url { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 
 .list {
   display: flex;

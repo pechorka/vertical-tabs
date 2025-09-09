@@ -1,6 +1,7 @@
 const listEl = document.getElementById('list');
 const filterEl = document.getElementById('filter');
-const newTabBtn = document.getElementById('new-tab');
+const newTabEl = document.getElementById('newtab');
+const resultsEl = document.getElementById('results');
 
 let allTabs = [];
 let currentWindowId = null;
@@ -8,6 +9,7 @@ let collapsedGroups = {}; // { [groupKey]: boolean }
 // Inline edit state: { [tabId]: string } if present -> editing with current value
 const editState = {};
 let pendingEditFocusId = null;
+let historyResults = [];
 
 async function loadTabs() {
   const win = await chrome.windows.getCurrent();
@@ -285,13 +287,92 @@ async function refresh() {
   render();
 }
 
+function renderHistoryResults() {
+  const frag = document.createDocumentFragment();
+  for (const item of historyResults) {
+    const el = document.createElement('div');
+    el.className = 'result-item';
+
+    const title = document.createElement('div');
+    title.className = 'res-title';
+    title.textContent = item.title || '(untitled)';
+    el.appendChild(title);
+
+    const url = document.createElement('div');
+    url.className = 'res-url';
+    url.textContent = item.url || '';
+    el.appendChild(url);
+
+    el.addEventListener('click', async () => {
+      if (!item.url) return;
+      await openInNewTab(item.url);
+    });
+
+    frag.appendChild(el);
+  }
+  resultsEl.replaceChildren(frag);
+}
+
+async function updateHistoryResults() {
+  const q = newTabEl.value.trim();
+  if (!q) {
+    historyResults = [];
+    renderHistoryResults();
+    return;
+  }
+  try {
+    // Search across all time, limit to reasonable amount
+    const raw = await chrome.history.search({ text: q, maxResults: 50, startTime: 0 });
+    const s = q.toLowerCase();
+    // Only match by URL, but render title first
+    historyResults = raw
+      .filter(it => (it.url || '').toLowerCase().includes(s))
+      .sort((a, b) => (b.lastVisitTime || 0) - (a.lastVisitTime || 0));
+  } catch (e) {
+    historyResults = [];
+  }
+  renderHistoryResults();
+}
+
+async function openInNewTab(url) {
+  try {
+    await chrome.tabs.create({ windowId: currentWindowId, url, active: true });
+  } catch {}
+  // Clear input and results
+  newTabEl.value = '';
+  historyResults = [];
+  renderHistoryResults();
+  await refresh();
+}
+
+async function openDuckDuckGo(query) {
+  const q = query.trim();
+  const url = 'https://duckduckgo.com/?q=' + encodeURIComponent(q);
+  await openInNewTab(url);
+}
+
 // Wire up UI events
 filterEl.addEventListener('input', () => render());
-newTabBtn.addEventListener('click', async () => {
-  try {
-    await chrome.tabs.create({ windowId: currentWindowId, active: true });
-  } catch {}
-  await refresh();
+newTabEl.addEventListener('input', async () => {
+  await updateHistoryResults();
+});
+
+newTabEl.addEventListener('keydown', async (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const q = newTabEl.value.trim();
+    const ctrl = e.ctrlKey || e.metaKey; // allow Cmd+Enter on mac
+    if (ctrl) {
+      await openDuckDuckGo(q);
+      return;
+    }
+    // If there are matches, open the first one; otherwise DDG
+    if (historyResults.length > 0) {
+      await openInNewTab(historyResults[0].url);
+    } else {
+      await openDuckDuckGo(q);
+    }
+  }
 });
 
 // Listen to tab events to keep in sync
