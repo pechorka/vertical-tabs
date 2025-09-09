@@ -1,6 +1,5 @@
 const listEl = document.getElementById('list');
 const filterEl = document.getElementById('filter');
-const refreshBtn = document.getElementById('refresh');
 const newTabBtn = document.getElementById('new-tab');
 
 let allTabs = [];
@@ -116,7 +115,6 @@ async function refresh() {
 
 // Wire up UI events
 filterEl.addEventListener('input', () => render());
-refreshBtn.addEventListener('click', () => refresh());
 newTabBtn.addEventListener('click', async () => {
   try {
     await chrome.tabs.create({ windowId: currentWindowId, active: true });
