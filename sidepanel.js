@@ -5,6 +5,9 @@ const newTabBtn = document.getElementById('new-tab');
 let allTabs = [];
 let currentWindowId = null;
 let collapsedGroups = {}; // { [groupKey]: boolean }
+// Inline edit state: { [tabId]: string } if present -> editing with current value
+const editState = {};
+let pendingEditFocusId = null;
 
 async function loadTabs() {
   const win = await chrome.windows.getCurrent();
@@ -131,7 +134,8 @@ function render() {
 
     for (const tab of g.tabs) {
       const item = document.createElement('div');
-      item.className = `item${tab.active ? ' active' : ''}${tab.pinned ? ' pinned' : ''}`;
+      const isEditing = editState[tab.id] !== undefined;
+      item.className = `item${tab.active ? ' active' : ''}${tab.pinned ? ' pinned' : ''}${isEditing ? ' editing' : ''}`;
       item.draggable = true;
       item.dataset.tabId = String(tab.id);
 
@@ -142,10 +146,35 @@ function render() {
       icon.src = faviconUrl(tab);
       item.appendChild(icon);
 
-      const title = document.createElement('div');
-      title.className = 'title';
-      title.textContent = tab.title || '(untitled)';
-      item.appendChild(title);
+      if (isEditing) {
+        const ta = document.createElement('textarea');
+        ta.className = 'edit-input';
+        ta.rows = 3;
+        ta.value = editState[tab.id] ?? tab.url ?? '';
+        ta.setAttribute('data-edit-for', String(tab.id));
+        ta.addEventListener('click', (e) => e.stopPropagation());
+        ta.addEventListener('input', (e) => {
+          editState[tab.id] = ta.value;
+        });
+        ta.addEventListener('keydown', async (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            await submitEdit(tab);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            delete editState[tab.id];
+            render();
+          }
+        });
+        item.appendChild(ta);
+      } else {
+        const title = document.createElement('div');
+        title.className = 'title';
+        title.textContent = tab.title || '(untitled)';
+        item.appendChild(title);
+      }
 
       const ctrls = document.createElement('div');
       ctrls.className = 'controls';
@@ -175,6 +204,17 @@ function render() {
         }
       });
 
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn';
+      editBtn.textContent = 'Edit';
+      editBtn.title = 'Edit URL';
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        editState[tab.id] = tab.url || '';
+        pendingEditFocusId = tab.id;
+        render();
+      });
+
       const close = document.createElement('button');
       close.className = 'btn danger';
       close.textContent = 'Close';
@@ -186,11 +226,13 @@ function render() {
       });
 
       ctrls.appendChild(copy);
+      ctrls.appendChild(editBtn);
       ctrls.appendChild(close);
       item.appendChild(ctrls);
 
       // Activate on click
       item.addEventListener('click', async () => {
+        if (editState[tab.id] !== undefined) return; // ignore clicks while editing
         try {
           await chrome.tabs.update(tab.id, { active: true });
           await chrome.windows.update(tab.windowId, { focused: true });
@@ -226,6 +268,16 @@ function render() {
   }
 
   listEl.replaceChildren(frag);
+
+  // Focus newly created edit textarea if requested
+  if (pendingEditFocusId != null) {
+    const el = document.querySelector(`.edit-input[data-edit-for="${pendingEditFocusId}"]`);
+    if (el) {
+      el.focus();
+      try { el.select(); } catch {}
+    }
+    pendingEditFocusId = null;
+  }
 }
 
 async function refresh() {
@@ -258,3 +310,31 @@ chrome.windows.onFocusChanged.addListener(refresh);
 
 // Initial render
 refresh();
+
+async function submitEdit(tab) {
+  const val = (editState[tab.id] ?? '').trim();
+  delete editState[tab.id];
+  if (!val) { render(); return; }
+  let target = val;
+  try {
+    // Will throw if invalid
+    // eslint-disable-next-line no-new
+    new URL(target);
+  } catch {
+    // Try prefixing http:// if missing scheme
+    try {
+      target = 'http://' + target;
+      // eslint-disable-next-line no-new
+      new URL(target);
+    } catch {
+      // If still invalid, just re-render and bail
+      render();
+      return;
+    }
+  }
+  try {
+    await chrome.tabs.update(tab.id, { url: target, active: true });
+    await chrome.windows.update(tab.windowId, { focused: true });
+  } catch {}
+  await refresh();
+}

@@ -91,6 +91,8 @@ html, body {
 .item:hover { background: var(--hover); }
 .item.active { border-color: var(--accent); background: #121724; }
 .item.pinned .title { font-weight: 600; }
+.item.editing { cursor: default; }
+.item.editing { padding-top: 16px; padding-bottom: 16px; }
 
 .favicon {
   width: 16px;
@@ -108,6 +110,7 @@ html, body {
 
 .controls { display: none; gap: 6px; align-items: center; }
 .item:hover .controls { display: flex; }
+.item.editing .controls { display: none; }
 .btn {
   background: transparent;
   border: 1px solid var(--border);
@@ -124,4 +127,18 @@ html, body {
   margin: 2px 0;
   border-radius: 4px;
   background: var(--border);
+}
+
+/* Edit mode */
+.edit-input {
+  grid-column: 2 / -1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #0c0e13;
+  color: var(--text);
+  outline: none;
+  font: inherit;
+  resize: none;
+  line-height: 1.4;
 }
