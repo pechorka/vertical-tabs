@@ -54,9 +54,27 @@ html, body {
 .list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   padding: 8px;
 }
+
+.group { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: rgba(21,24,33,0.4); }
+.group-header {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background: var(--panel);
+  cursor: pointer;
+  user-select: none;
+}
+.group-header:hover { background: #181c27; }
+.group-caret { color: var(--muted); width: 16px; text-align: center; }
+.group-title { font-weight: 600; color: var(--text); }
+.group-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.group-body { display: flex; flex-direction: column; gap: 2px; padding: 6px; }
+.group-body.collapsed { display: none; }
 
 .item {
   display: grid;
@@ -106,4 +124,3 @@ html, body {
   border-radius: 4px;
   background: var(--border);
 }
-
