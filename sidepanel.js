@@ -240,6 +240,7 @@ function render() {
       item.className = `item${tab.active ? ' active' : ''}${tab.pinned ? ' pinned' : ''}${isEditing ? ' editing' : ''}${isMenuOpen ? ' menu-open' : ''}`;
       item.draggable = true;
       item.dataset.tabId = String(tab.id);
+      item.tabIndex = 0;
 
       const icon = document.createElement('img');
       icon.className = 'favicon';
@@ -372,6 +373,18 @@ function render() {
           await chrome.windows.update(tab.windowId, { focused: true });
         } catch {}
         await refresh();
+      });
+      // Activate on Enter/Space
+      item.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (editState[tab.id] !== undefined) return;
+          try {
+            await chrome.tabs.update(tab.id, { active: true });
+            await chrome.windows.update(tab.windowId, { focused: true });
+          } catch {}
+          await refresh();
+        }
       });
 
       // Drag & drop reorder
@@ -516,6 +529,7 @@ function renderHistoryResults() {
   for (const item of historyResults) {
     const el = document.createElement('div');
     el.className = 'result-item';
+    el.tabIndex = 0;
 
     const title = document.createElement('div');
     title.className = 'res-title';
@@ -530,6 +544,13 @@ function renderHistoryResults() {
     el.addEventListener('click', async () => {
       if (!item.url) return;
       await openInNewTab(item.url);
+    });
+    el.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!item.url) return;
+        await openInNewTab(item.url);
+      }
     });
 
     frag.appendChild(el);
@@ -588,8 +609,13 @@ newTabEl.addEventListener('search', async () => {
 
 newTabEl.addEventListener('keydown', async (e) => {
   if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    // Move focus directly to the Filter input
     e.preventDefault();
+    // Prefer first search result if present; otherwise first tab item
+    const firstResult = resultsEl.querySelector('.result-item');
+    if (firstResult) { try { firstResult.focus(); } catch {} return; }
+    const firstTab = listEl.querySelector('.group-body:not(.collapsed) .item');
+    if (firstTab) { try { firstTab.focus(); } catch {} return; }
+    // Fallback to filter
     try { filterEl.focus(); } catch {}
     return;
   }
