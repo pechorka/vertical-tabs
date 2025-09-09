@@ -28,6 +28,22 @@ html, body {
   border-bottom: 1px solid var(--border);
 }
 
+.zoom-controls {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.zoom-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 44px;
+}
+.zoom-btn:hover { border-color: var(--accent); color: var(--text); }
+
 .sessions {
   display: flex;
   flex-direction: column;

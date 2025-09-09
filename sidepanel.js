@@ -3,6 +3,9 @@ const filterEl = document.getElementById('filter');
 const newTabEl = document.getElementById('newtab');
 const resultsEl = document.getElementById('results');
 const sessionsEl = document.getElementById('sessions');
+const zoomInEl = document.getElementById('zoom-in');
+const zoomOutEl = document.getElementById('zoom-out');
+const zoomResetEl = document.getElementById('zoom-reset');
 
 let allTabs = [];
 let currentWindowId = null;
@@ -16,6 +19,42 @@ let sessions = []; // [{ id, title }]
 let activeSessionId = null;
 let tabSession = {}; // { [tabId]: sessionId }
 let openMenuTabId = null;
+
+// Zoom state
+let zoomLevel = 1.0;
+const ZOOM_MIN = 0.7;
+const ZOOM_MAX = 2.0;
+const ZOOM_STEP = 0.1;
+const ZOOM_KEY = 'vt_zoom_level';
+
+function clamp(val, min, max) { return Math.min(max, Math.max(min, val)); }
+
+async function loadZoom() {
+  try {
+    const data = await chrome.storage.local.get(ZOOM_KEY);
+    const v = Number(data[ZOOM_KEY]);
+    if (!Number.isNaN(v) && v >= 0.5 && v <= 3) {
+      zoomLevel = v;
+    }
+  } catch {}
+  applyZoom();
+}
+
+async function saveZoom() {
+  try { await chrome.storage.local.set({ [ZOOM_KEY]: zoomLevel }); } catch {}
+}
+
+function applyZoom() {
+  // Use Chromium-supported CSS zoom applied to root
+  document.documentElement.style.zoom = String(zoomLevel);
+  if (zoomResetEl) zoomResetEl.textContent = Math.round(zoomLevel * 100) + '%';
+}
+
+async function setZoom(newLevel) {
+  zoomLevel = clamp(Math.round(newLevel / ZOOM_STEP) * ZOOM_STEP, ZOOM_MIN, ZOOM_MAX);
+  applyZoom();
+  await saveZoom();
+}
 
 async function loadTabs() {
   const win = await chrome.windows.getCurrent();
@@ -582,6 +621,9 @@ chrome.windows.onFocusChanged.addListener(refresh);
 // Initial render
 refresh();
 
+// Load and apply zoom after initial DOM ready
+loadZoom();
+
 async function submitEdit(tab) {
   const val = (editState[tab.id] ?? '').trim();
   delete editState[tab.id];
@@ -618,8 +660,46 @@ document.addEventListener('click', () => {
   }
 });
 document.addEventListener('keydown', (e) => {
+  // Handle zoom shortcuts similar to page zoom
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      setZoom(zoomLevel + ZOOM_STEP);
+      return;
+    }
+    if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      setZoom(zoomLevel - ZOOM_STEP);
+      return;
+    }
+    if (e.key === '0') {
+      e.preventDefault();
+      setZoom(1.0);
+      return;
+    }
+  }
   if (e.key === 'Escape' && openMenuTabId != null) {
     openMenuTabId = null;
     render();
   }
 });
+
+// Zoom control buttons
+if (zoomInEl) {
+  zoomInEl.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await setZoom(zoomLevel + ZOOM_STEP);
+  });
+}
+if (zoomOutEl) {
+  zoomOutEl.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await setZoom(zoomLevel - ZOOM_STEP);
+  });
+}
+if (zoomResetEl) {
+  zoomResetEl.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await setZoom(1.0);
+  });
+}
