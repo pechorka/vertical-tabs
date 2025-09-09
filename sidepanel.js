@@ -353,7 +353,12 @@ async function openDuckDuckGo(query) {
 
 // Wire up UI events
 filterEl.addEventListener('input', () => render());
+// Also handle native clear (x) on search inputs
+filterEl.addEventListener('search', () => render());
 newTabEl.addEventListener('input', async () => {
+  await updateHistoryResults();
+});
+newTabEl.addEventListener('search', async () => {
   await updateHistoryResults();
 });
 
