@@ -18,6 +18,9 @@
   function buildOverlay() {
     const root = document.createElement('div');
     root.id = OVERLAY_ID;
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.tabIndex = -1; // allow programmatic focus
 
     // Stop scroll/interaction beneath overlay
     root.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
@@ -63,6 +66,18 @@
     const root = buildOverlay();
     document.documentElement.appendChild(root);
     addKeyHandlers();
+    // Move focus into the overlay and then into the iframe when ready
+    try { root.focus(); } catch {}
+    const frame = root.querySelector('iframe.vt-frame');
+    if (frame) {
+      const focusFrame = () => {
+        try { frame.focus(); } catch {}
+        try { frame.contentWindow && frame.contentWindow.focus && frame.contentWindow.focus(); } catch {}
+      };
+      // Try immediately and also after load to be safe
+      setTimeout(focusFrame, 0);
+      frame.addEventListener('load', () => setTimeout(focusFrame, 0), { once: true });
+    }
   }
 
   function removeOverlay() {
@@ -88,4 +103,3 @@
     }
   });
 })();
-

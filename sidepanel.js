@@ -587,6 +587,12 @@ newTabEl.addEventListener('search', async () => {
 });
 
 newTabEl.addEventListener('keydown', async (e) => {
+  if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    // Move focus directly to the Filter input
+    e.preventDefault();
+    try { filterEl.focus(); } catch {}
+    return;
+  }
   if (e.key === 'Enter') {
     e.preventDefault();
     const q = newTabEl.value.trim();
@@ -623,6 +629,17 @@ refresh();
 
 // Load and apply zoom after initial DOM ready
 loadZoom();
+
+// Auto-focus the "New tab" input on open so you can start typing immediately
+try {
+  // Next tick to ensure layout is ready
+  setTimeout(() => { try { newTabEl.focus(); } catch {} }, 0);
+} catch {}
+
+// If the iframe gains focus later (e.g., after programmatic focus), ensure the input is focused
+window.addEventListener('focus', () => {
+  try { newTabEl.focus(); } catch {}
+});
 
 async function submitEdit(tab) {
   const val = (editState[tab.id] ?? '').trim();
