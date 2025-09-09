@@ -150,14 +150,29 @@ function render() {
       const ctrls = document.createElement('div');
       ctrls.className = 'controls';
 
-      const pin = document.createElement('button');
-      pin.className = 'btn';
-      pin.textContent = tab.pinned ? 'Unpin' : 'Pin';
-      pin.title = tab.pinned ? 'Unpin tab' : 'Pin tab';
-      pin.addEventListener('click', async (e) => {
+      const copy = document.createElement('button');
+      copy.className = 'btn';
+      copy.textContent = 'Copy';
+      copy.title = 'Copy URL';
+      copy.addEventListener('click', async (e) => {
         e.stopPropagation();
-        await chrome.tabs.update(tab.id, { pinned: !tab.pinned });
-        await refresh();
+        const url = tab.url || '';
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch (_) {
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            // Avoid scrolling to bottom on iOS
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+          } catch {}
+        }
       });
 
       const close = document.createElement('button');
@@ -170,7 +185,7 @@ function render() {
         await refresh();
       });
 
-      ctrls.appendChild(pin);
+      ctrls.appendChild(copy);
       ctrls.appendChild(close);
       item.appendChild(ctrls);
 
