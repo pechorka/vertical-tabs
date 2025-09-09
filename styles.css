@@ -106,7 +106,8 @@ html, body {
   color: var(--text);
 }
 
-.controls { display: flex; gap: 6px; align-items: center; }
+.controls { display: none; gap: 6px; align-items: center; }
+.item:hover .controls { display: flex; }
 .btn {
   background: transparent;
   border: 1px solid var(--border);
