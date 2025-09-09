@@ -249,8 +249,21 @@ function render() {
         render();
       });
 
+      const miMove = document.createElement('button');
+      miMove.className = 'menu-item';
+      miMove.textContent = 'Move to new window';
+      miMove.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          await chrome.windows.create({ tabId: tab.id, focused: true });
+        } catch {}
+        openMenuTabId = null;
+        await refresh();
+      });
+
       panel.appendChild(miCopy);
       panel.appendChild(miEdit);
+      panel.appendChild(miMove);
       item.appendChild(panel);
 
       // Activate on click
