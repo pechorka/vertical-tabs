@@ -10,6 +10,7 @@ let collapsedGroups = {}; // { [groupKey]: boolean }
 const editState = {};
 let pendingEditFocusId = null;
 let historyResults = [];
+let openMenuTabId = null;
 
 async function loadTabs() {
   const win = await chrome.windows.getCurrent();
@@ -137,7 +138,8 @@ function render() {
     for (const tab of g.tabs) {
       const item = document.createElement('div');
       const isEditing = editState[tab.id] !== undefined;
-      item.className = `item${tab.active ? ' active' : ''}${tab.pinned ? ' pinned' : ''}${isEditing ? ' editing' : ''}`;
+      const isMenuOpen = openMenuTabId === tab.id;
+      item.className = `item${tab.active ? ' active' : ''}${tab.pinned ? ' pinned' : ''}${isEditing ? ' editing' : ''}${isMenuOpen ? ' menu-open' : ''}`;
       item.draggable = true;
       item.dataset.tabId = String(tab.id);
 
@@ -181,39 +183,14 @@ function render() {
       const ctrls = document.createElement('div');
       ctrls.className = 'controls';
 
-      const copy = document.createElement('button');
-      copy.className = 'btn';
-      copy.textContent = 'Copy';
-      copy.title = 'Copy URL';
-      copy.addEventListener('click', async (e) => {
+      // Menu trigger
+      const menuBtn = document.createElement('button');
+      menuBtn.className = 'menu-btn';
+      menuBtn.title = 'More actions';
+      menuBtn.textContent = '⋯';
+      menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const url = tab.url || '';
-        try {
-          await navigator.clipboard.writeText(url);
-        } catch (_) {
-          try {
-            const ta = document.createElement('textarea');
-            ta.value = url;
-            // Avoid scrolling to bottom on iOS
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.focus();
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
-          } catch {}
-        }
-      });
-
-      const editBtn = document.createElement('button');
-      editBtn.className = 'btn';
-      editBtn.textContent = 'Edit';
-      editBtn.title = 'Edit URL';
-      editBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        editState[tab.id] = tab.url || '';
-        pendingEditFocusId = tab.id;
+        openMenuTabId = openMenuTabId === tab.id ? null : tab.id;
         render();
       });
 
@@ -226,11 +203,55 @@ function render() {
         try { await chrome.tabs.remove(tab.id); } catch {}
         await refresh();
       });
-
-      ctrls.appendChild(copy);
-      ctrls.appendChild(editBtn);
+      
+      ctrls.appendChild(menuBtn);
       ctrls.appendChild(close);
       item.appendChild(ctrls);
+
+      // Dropdown menu panel
+      const panel = document.createElement('div');
+      panel.className = 'menu-panel';
+      panel.addEventListener('click', (e) => e.stopPropagation());
+
+      const miCopy = document.createElement('button');
+      miCopy.className = 'menu-item';
+      miCopy.textContent = 'Copy URL';
+      miCopy.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const url = tab.url || '';
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch (_) {
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = url;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+          } catch {}
+        }
+        openMenuTabId = null;
+        render();
+      });
+
+      const miEdit = document.createElement('button');
+      miEdit.className = 'menu-item';
+      miEdit.textContent = 'Edit URL';
+      miEdit.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openMenuTabId = null;
+        editState[tab.id] = tab.url || '';
+        pendingEditFocusId = tab.id;
+        render();
+      });
+
+      panel.appendChild(miCopy);
+      panel.appendChild(miEdit);
+      item.appendChild(panel);
 
       // Activate on click
       item.addEventListener('click', async () => {
@@ -424,3 +445,17 @@ async function submitEdit(tab) {
   } catch {}
   await refresh();
 }
+
+// Close menus on outside click or ESC
+document.addEventListener('click', () => {
+  if (openMenuTabId != null) {
+    openMenuTabId = null;
+    render();
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && openMenuTabId != null) {
+    openMenuTabId = null;
+    render();
+  }
+});

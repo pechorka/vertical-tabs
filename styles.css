@@ -85,7 +85,7 @@ html, body {
   padding: 8px;
 }
 
-.group { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: rgba(21,24,33,0.4); }
+.group { border: 1px solid var(--border); border-radius: 8px; overflow: visible; background: rgba(21,24,33,0.4); }
 .group-header {
   display: grid;
   grid-template-columns: 18px 1fr auto;
@@ -113,7 +113,9 @@ html, body {
   cursor: pointer;
   user-select: none;
   border: 1px solid transparent;
+  position: relative;
 }
+.item.menu-open { z-index: 1000; }
 
 .item:hover { background: var(--hover); }
 .item.active { border-color: var(--accent); background: #121724; }
@@ -138,6 +140,40 @@ html, body {
 .controls { display: none; gap: 6px; align-items: center; }
 .item:hover .controls { display: flex; }
 .item.editing .controls { display: none; }
+.menu-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.menu-btn:hover { border-color: var(--accent); color: var(--text); }
+.menu-panel {
+  position: absolute;
+  right: 8px;
+  top: calc(100% + 6px);
+  min-width: 140px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+  padding: 6px;
+  display: none;
+  z-index: 5;
+}
+.item.menu-open .menu-panel { display: block; }
+.menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.menu-item:hover { background: var(--hover); border-color: var(--border); }
 .btn {
   background: transparent;
   border: 1px solid var(--border);
