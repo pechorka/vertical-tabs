@@ -2,6 +2,7 @@
 
 (() => {
   const OVERLAY_ID = 'vt-overlay-root';
+  let navCleanupInstalled = false;
 
   function createStyles() {
     const style = document.createElement('style');
@@ -110,4 +111,48 @@
       removeOverlay();
     }
   });
+
+  // Close overlay on navigation, including SPA route changes.
+  function installNavigationCleanup() {
+    if (navCleanupInstalled) return;
+    navCleanupInstalled = true;
+
+    const onNav = () => {
+      try { removeOverlay(); } catch {}
+    };
+
+    // Full navigations / bfcache
+    window.addEventListener('beforeunload', onNav, true);
+    window.addEventListener('pagehide', onNav, true);
+
+    // Same-document navigations
+    window.addEventListener('hashchange', onNav, true);
+    window.addEventListener('popstate', onNav, true);
+
+    // Tab deactivation: close when the page becomes hidden (switching tabs/windows)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) onNav();
+    }, true);
+
+    // Patch history methods to catch pushState/replaceState
+    try {
+      const originalPushState = history.pushState;
+      const originalReplaceState = history.replaceState;
+      history.pushState = function (...args) {
+        const ret = originalPushState.apply(this, args);
+        onNav();
+        return ret;
+      };
+      history.replaceState = function (...args) {
+        const ret = originalReplaceState.apply(this, args);
+        onNav();
+        return ret;
+      };
+    } catch (_) {
+      // If patching history fails, events above still handle most cases.
+    }
+  }
+
+  // Ensure cleanup hooks are installed as soon as the script runs.
+  installNavigationCleanup();
 })();
