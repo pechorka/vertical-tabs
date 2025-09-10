@@ -616,6 +616,17 @@ async function openDuckDuckGo(query) {
   await openInNewTab(url);
 }
 
+async function activateTabId(tabId) {
+  try {
+    const t = allTabs.find(x => x.id === tabId);
+    await chrome.tabs.update(tabId, { active: true });
+    if (t) {
+      await chrome.windows.update(t.windowId, { focused: true });
+    }
+  } catch {}
+  await refresh();
+}
+
 // Wire up UI events
 filterEl.addEventListener('input', () => render());
 // Also handle native clear (x) on search inputs
@@ -630,6 +641,7 @@ newTabEl.addEventListener('search', async () => {
 newTabEl.addEventListener('keydown', async (e) => {
   if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
+    e.stopPropagation();
     // Prefer first search result if present; otherwise first tab item
     const firstResult = resultsEl.querySelector('.result-item');
     if (firstResult) { try { firstResult.focus(); } catch {} return; }
@@ -656,6 +668,18 @@ newTabEl.addEventListener('keydown', async (e) => {
   }
 });
 
+// From filter input: Enter activates the first visible tab in the list
+filterEl.addEventListener('keydown', async (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const firstTab = listEl.querySelector('.group-body:not(.collapsed) .item');
+    if (firstTab) {
+      const id = Number(firstTab.dataset.tabId);
+      if (id) await activateTabId(id);
+    }
+  }
+});
+
 // Listen to tab events to keep in sync
 chrome.tabs.onCreated.addListener(refresh);
 chrome.tabs.onRemoved.addListener(refresh);
@@ -676,24 +700,32 @@ refresh();
 // Load and apply zoom after initial DOM ready
 loadZoom();
 
-// Auto-focus the "New tab" input on open so you can start typing immediately
+// Auto-focus the "Filter tabs" input on open
 try {
   // Next tick to ensure layout is ready
-  setTimeout(() => { try { newTabEl.focus(); } catch {} }, 0);
+  setTimeout(() => { try { filterEl.focus(); } catch {} }, 0);
 } catch {}
 
-// If the iframe gains focus later (e.g., after programmatic focus), ensure the input is focused
+// If the iframe gains focus later (e.g., after programmatic focus), ensure the filter input is focused
 window.addEventListener('focus', () => {
-  try { newTabEl.focus(); } catch {}
+  try { filterEl.focus(); } catch {}
 });
 
 // Keyboard navigation: Tab/Shift+Tab and Arrow Up/Down across key elements
 function getNavElements() {
   const order = [];
-  if (newTabEl && newTabEl.isConnected) order.push(newTabEl);
-  resultsEl.querySelectorAll('.result-item').forEach(el => { if (el.isConnected) order.push(el); });
-  listEl.querySelectorAll('.group-body:not(.collapsed) .item').forEach(el => { if (el.isConnected) order.push(el); });
   if (filterEl && filterEl.isConnected) order.push(filterEl);
+  const results = Array.from(resultsEl.querySelectorAll('.result-item')).filter(el => el.isConnected);
+  const tabs = Array.from(listEl.querySelectorAll('.group-body:not(.collapsed) .item')).filter(el => el.isConnected);
+  const hasResults = results.length > 0;
+  if (hasResults) {
+    order.push(...results);
+    order.push(...tabs);
+    if (newTabEl && newTabEl.isConnected) order.push(newTabEl);
+  } else {
+    if (newTabEl && newTabEl.isConnected) order.push(newTabEl);
+    order.push(...tabs);
+  }
   return order;
 }
 
