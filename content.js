@@ -40,6 +40,8 @@
 
     const iframe = document.createElement('iframe');
     iframe.className = 'vt-frame';
+    // Allow clipboard access inside the extension UI
+    try { iframe.allow = 'clipboard-read; clipboard-write'; } catch {}
     iframe.src = chrome.runtime.getURL('sidepanel.html');
     modal.appendChild(iframe);
 

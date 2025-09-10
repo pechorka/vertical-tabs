@@ -6,6 +6,7 @@ const sessionsEl = document.getElementById('sessions');
 const zoomInEl = document.getElementById('zoom-in');
 const zoomOutEl = document.getElementById('zoom-out');
 const zoomResetEl = document.getElementById('zoom-reset');
+const openClipboardEl = document.getElementById('open-clipboard');
 
 let allTabs = [];
 let currentWindowId = null;
@@ -610,6 +611,42 @@ async function openInNewTab(url) {
   await refresh();
 }
 
+function normalizeToUrl(input) {
+  if (!input) return null;
+  const raw = String(input).trim().split(/\s+/)[0];
+  if (!raw) return null;
+  try {
+    // eslint-disable-next-line no-new
+    new URL(raw);
+    return raw;
+  } catch {}
+  try {
+    const prefixed = 'http://' + raw;
+    // eslint-disable-next-line no-new
+    new URL(prefixed);
+    return prefixed;
+  } catch {}
+  return null;
+}
+
+async function openFromClipboard() {
+  let text = '';
+  try {
+    text = await navigator.clipboard.readText();
+  } catch (e) {
+    // Show a subtle hint in the new tab input if clipboard read fails
+    try { newTabEl.placeholder = 'Clipboard read denied'; } catch {}
+    return;
+  }
+  const url = normalizeToUrl(text);
+  if (!url) {
+    // Not a URL; hint and bail
+    try { newTabEl.placeholder = 'Clipboard has no valid link'; } catch {}
+    return;
+  }
+  await openInNewTab(url);
+}
+
 async function openDuckDuckGo(query) {
   const q = query.trim();
   const url = 'https://duckduckgo.com/?q=' + encodeURIComponent(q);
@@ -864,5 +901,13 @@ if (zoomResetEl) {
   zoomResetEl.addEventListener('click', async (e) => {
     e.preventDefault();
     await setZoom(1.0);
+  });
+}
+
+// Open link from clipboard
+if (openClipboardEl) {
+  openClipboardEl.addEventListener('click', async (e) => {
+    e.preventDefault();
+    await openFromClipboard();
   });
 }
